@@ -94,7 +94,7 @@ def test_patch_partial_update_keeps_other_fields(client, created_task):
     original_title = created_task["title"]
     original_priority = created_task["priority"]
 
-    response = client.patch(f"/tasks/{task_id}", params={"status": "InProgress"})
+    response = client.patch(f"/tasks/{task_id}", json={"status": "InProgress"})
 
     assert response.status_code == 200
     body = response.json()
@@ -105,7 +105,7 @@ def test_patch_partial_update_keeps_other_fields(client, created_task):
 
 
 def test_patch_not_found_returns_404(client):
-    response = client.patch("/tasks/nonexistent", params={"status": "InProgress"})
+    response = client.patch("/tasks/nonexistent", json={"status": "InProgress"})
 
     assert response.status_code == 404
 
@@ -113,7 +113,7 @@ def test_patch_not_found_returns_404(client):
 def test_patch_valid_transition_todo_to_inprogress_returns_200(client, created_task):
     task_id = created_task["id"]
 
-    response = client.patch(f"/tasks/{task_id}", params={"status": "InProgress"})
+    response = client.patch(f"/tasks/{task_id}", json={"status": "InProgress"})
 
     assert response.status_code == 200
     assert response.json()["status"] == "InProgress"
@@ -122,7 +122,7 @@ def test_patch_valid_transition_todo_to_inprogress_returns_200(client, created_t
 def test_patch_invalid_transition_todo_to_done_returns_422(client, created_task):
     task_id = created_task["id"]
 
-    response = client.patch(f"/tasks/{task_id}", params={"status": "Done"})
+    response = client.patch(f"/tasks/{task_id}", json={"status": "Done"})
 
     assert response.status_code == 422
 
@@ -130,7 +130,7 @@ def test_patch_invalid_transition_todo_to_done_returns_422(client, created_task)
 def test_patch_same_status_returns_422(client, created_task):
     task_id = created_task["id"]
 
-    response = client.patch(f"/tasks/{task_id}", params={"status": "ToDo"})
+    response = client.patch(f"/tasks/{task_id}", json={"status": "ToDo"})
 
     assert response.status_code == 422
 

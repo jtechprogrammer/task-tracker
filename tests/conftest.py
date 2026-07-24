@@ -1,15 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app import storage
+from app.main import app, repo
 
 
 @pytest.fixture(autouse=True)
 def _reset_storage():
-    storage._reset()
+    repo._reset()
     yield
-    storage._reset()
+    repo._reset()
 
 
 @pytest.fixture
