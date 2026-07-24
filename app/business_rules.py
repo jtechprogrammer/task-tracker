@@ -6,6 +6,9 @@ VALID_TRANSITIONS: frozenset[tuple[TaskStatus, TaskStatus]] = frozenset({
     (TaskStatus.TODO, TaskStatus.IN_PROGRESS),
     (TaskStatus.IN_PROGRESS, TaskStatus.DONE),
     (TaskStatus.DONE, TaskStatus.IN_PROGRESS),
+    (TaskStatus.TODO, TaskStatus.TODO), # Allow same status transition for idempotency
+    (TaskStatus.IN_PROGRESS, TaskStatus.IN_PROGRESS), # Allow same status transition for idempotency
+    (TaskStatus.DONE, TaskStatus.DONE), # Allow same status transition for idempotency
 })
 
 
