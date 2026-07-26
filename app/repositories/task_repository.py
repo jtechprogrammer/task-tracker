@@ -89,6 +89,8 @@ class JsonTaskRepository:
             status=payload.status,
             priority=payload.priority,
             assignee=payload.assignee,
+            due_date=payload.due_date,
+            tags=payload.tags,
             created_at=now,
             updated_at=now,
         )

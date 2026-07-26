@@ -45,6 +45,101 @@ def test_create_task_unknown_field_returns_422(client):
     assert response.status_code == 422
 
 
+def test_create_task_with_valid_due_date_returns_201(client):
+    payload = {
+        "title": "Task with deadline",
+        "due_date": "2026-08-15",
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["due_date"] == "2026-08-15"
+
+
+def test_create_task_without_due_date_returns_201(client):
+    payload = {
+        "title": "Task without deadline",
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["due_date"] is None
+
+
+def test_create_task_invalid_due_date_returns_422(client):
+    payload = {
+        "title": "Bad deadline",
+        "due_date": "not-a-date",
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_create_task_with_tags_returns_201(client):
+    payload = {
+        "title": "Tagged task",
+        "tags": ["frontend", "bug"],
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["tags"] == ["frontend", "bug"]
+
+
+def test_create_task_without_tags_returns_empty_list(client):
+    payload = {
+        "title": "Task without tags",
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["tags"] == []
+
+
+def test_create_task_tags_trimmed_and_empty_removed(client):
+    payload = {
+        "title": "Clean tags",
+        "tags": ["  frontend ", "", "   ", "  bug  "],
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["tags"] == ["frontend", "bug"]
+
+
+def test_create_task_tags_duplicates_removed(client):
+    payload = {
+        "title": "Duplicate tags",
+        "tags": ["bug", "frontend", "bug"],
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["tags"] == ["bug", "frontend"]
+
+
+def test_create_task_tags_case_sensitive(client):
+    payload = {
+        "title": "Case-sensitive tags",
+        "tags": ["frontend", "Frontend"],
+    }
+
+    response = client.post("/tasks", json=payload)
+
+    assert response.status_code == 201
+    assert response.json()["tags"] == ["frontend", "Frontend"]
+
+
 def test_list_tasks_empty_returns_200_and_empty_list(client):
     response = client.get("/tasks")
 
@@ -144,6 +239,119 @@ def test_patch_same_status_returns_200_unchanged(client, created_task):
 
     assert response.status_code == 200
     assert response.json()["status"] == "ToDo"
+
+
+def test_patch_set_due_date_returns_200(client):
+    create_resp = client.post("/tasks", json={"title": "Needs deadline"})
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()["id"]
+
+    response = client.patch(f"/tasks/{task_id}", json={"due_date": "2026-09-01"})
+
+    assert response.status_code == 200
+    assert response.json()["due_date"] == "2026-09-01"
+
+
+def test_patch_remove_due_date_returns_200(client):
+    create_resp = client.post(
+        "/tasks", json={"title": "Deadline to remove", "due_date": "2026-09-01"}
+    )
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()["id"]
+
+    response = client.patch(f"/tasks/{task_id}", json={"due_date": None})
+
+    assert response.status_code == 200
+    assert response.json()["due_date"] is None
+
+
+def test_patch_due_date_preserves_other_fields(client):
+    create_resp = client.post(
+        "/tasks",
+        json={"title": "Keep deadline", "priority": "Medium", "due_date": "2026-09-01"},
+    )
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()["id"]
+
+    response = client.patch(f"/tasks/{task_id}", json={"priority": "Low"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["priority"] == "Low"
+    assert body["due_date"] == "2026-09-01"
+
+
+def test_patch_replace_tags_returns_200(client):
+    create_resp = client.post(
+        "/tasks", json={"title": "Replace tags", "tags": ["frontend", "bug"]}
+    )
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()["id"]
+
+    response = client.patch(f"/tasks/{task_id}", json={"tags": ["docs"]})
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == ["docs"]
+
+
+def test_patch_clear_tags_returns_200(client):
+    create_resp = client.post(
+        "/tasks", json={"title": "Clear tags", "tags": ["frontend", "bug"]}
+    )
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()["id"]
+
+    response = client.patch(f"/tasks/{task_id}", json={"tags": []})
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == []
+
+
+def test_patch_tags_cleanup_trim_and_dedup(client):
+    create_resp = client.post(
+        "/tasks", json={"title": "Clean patched tags", "tags": ["old"]}
+    )
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()["id"]
+
+    response = client.patch(
+        f"/tasks/{task_id}",
+        json={"tags": [" docs ", "", "   ", "bug", "docs"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["tags"] == ["docs", "bug"]
+
+
+def test_patch_tags_preserves_other_fields(client):
+    create_resp = client.post(
+        "/tasks",
+        json={
+            "title": "Preserve fields",
+            "priority": "Medium",
+            "due_date": "2026-09-01",
+            "tags": ["old"],
+        },
+    )
+    assert create_resp.status_code == 201
+    task_id = create_resp.json()["id"]
+
+    response = client.patch(f"/tasks/{task_id}", json={"tags": ["changed"]})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tags"] == ["changed"]
+    assert body["priority"] == "Medium"
+    assert body["due_date"] == "2026-09-01"
+    assert body["title"] == "Preserve fields"
+
+
+def test_patch_tags_null_rejected_422(client, created_task):
+    task_id = created_task["id"]
+
+    response = client.patch(f"/tasks/{task_id}", json={"tags": None})
+
+    assert response.status_code == 422
 
 
 def test_delete_existing_returns_204_no_body(client, created_task):

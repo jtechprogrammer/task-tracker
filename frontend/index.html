@@ -28,6 +28,10 @@
     .column-body.drop-target{background:rgba(37,99,235,0.06);border-radius:8px}
     .card.dragging{opacity:0.5}
     .card.card-error{border-color:#dc2626;background:#fef2f2;animation:shake .3s ease-in-out}
+    .card.card-overdue{border-left:3px solid #dc2626}
+    .overdue-badge{display:inline-block;margin-left:4px;padding:1px 6px;background:#dc2626;color:#fff;border-radius:4px;font-size:11px;font-weight:600;vertical-align:middle}
+    .card-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+    .tag-badge{display:inline-block;padding:1px 6px;background:#e0e7ff;color:#3730a3;border-radius:4px;font-size:11px}
     .card-error-msg{margin:8px 0 0;padding:6px 8px;background:#fee2e2;color:#991b1b;border-radius:5px;font-size:12px;line-height:1.3}
     @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 
@@ -73,6 +77,7 @@
         <h1>Task Tracker</h1>
         <p class="subtitle">Simple Kanban board</p>
       </div>
+      <button class="btn-add" id="btn-filter-overdue" type="button" style="margin-right:8px;background:transparent;color:var(--accent);border:1px solid var(--accent)">Show Overdue Only</button>
       <button class="btn-add" id="btn-add-task" type="button">
         <span style="font-size:18px;line-height:1">+</span> Add Task
       </button>
@@ -167,6 +172,16 @@
         </div>
 
         <div class="field">
+          <label for="task-form-due-date">Due Date</label>
+          <input type="date" id="task-form-due-date" />
+        </div>
+
+        <div class="field">
+          <label for="task-form-tags">Tags</label>
+          <input type="text" id="task-form-tags" placeholder="e.g. frontend, bug, urgent" autocomplete="off" />
+        </div>
+
+        <div class="field">
           <label for="task-form-status">Status</label>
           <select id="task-form-status">
             <option value="ToDo">To Do</option>
@@ -193,9 +208,19 @@
     const BASE_URL = 'http://localhost:8000';
     let tasks = [];
     let dragTaskId = null;
+    let filterOverdue = false;
     const taskErrors = new Map();  // taskId → error message string
     const STATUSES = ['ToDo','InProgress','Done'];
     const priorityOrder = { 'High': 0, 'Medium': 1, 'Low': 2 };
+
+    function isOverdue(task) {
+      if (!task.due_date || task.status === 'Done') return false;
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-'
+        + String(today.getMonth() + 1).padStart(2, '0') + '-'
+        + String(today.getDate()).padStart(2, '0');
+      return task.due_date < todayStr;
+    }
 
     // ── Modal helpers ────────────────────────────────────────────────
     const modalOverlay = document.getElementById('task-modal-overlay');
@@ -208,6 +233,8 @@
     const prioritySel  = document.getElementById('task-form-priority');
     const statusSel    = document.getElementById('task-form-status');
     const assigneeInp  = document.getElementById('task-form-assignee');
+    const dueDateInput = document.getElementById('task-form-due-date');
+    const tagsInput    = document.getElementById('task-form-tags');
     const errTitle     = document.getElementById('err-title');
     const saveBtn      = document.getElementById('btn-modal-save');
 
@@ -226,6 +253,8 @@
       prioritySel.value = 'Medium';
       statusSel.value = 'ToDo';
       assigneeInp.value = '';
+      dueDateInput.value = '';
+      tagsInput.value = '';
       saveBtn.textContent = 'Save Task';
       saveBtn.disabled = false;
       modalOverlay.classList.add('active');
@@ -242,6 +271,8 @@
       prioritySel.value = task.priority || 'Medium';
       statusSel.value = task.status || 'ToDo';
       assigneeInp.value = task.assignee || '';
+      dueDateInput.value = task.due_date || '';
+      tagsInput.value = (task.tags || []).join(', ');
       saveBtn.textContent = 'Save Changes';
       saveBtn.disabled = false;
       modalOverlay.classList.add('active');
@@ -278,6 +309,10 @@
         priority: prioritySel.value,
         status: statusSel.value,
         assignee: assigneeInp.value.trim() || null,
+        due_date: dueDateInput.value || null,
+        tags: tagsInput.value
+          ? tagsInput.value.split(',').map(s => s.trim()).filter(s => s)
+          : [],
       };
 
       const mode = modeInput.value;
@@ -339,6 +374,13 @@
 
     // ── Add Task button ─────────────────────────────────────────────
     document.getElementById('btn-add-task').addEventListener('click', openAddModal);
+
+    const filterBtn = document.getElementById('btn-filter-overdue');
+    filterBtn.addEventListener('click', function () {
+      filterOverdue = !filterOverdue;
+      filterBtn.textContent = filterOverdue ? 'Show All Tasks' : 'Show Overdue Only';
+      renderBoard(tasks);
+    });
 
     function setBoardState(state, message = ''){
       const boardState = document.getElementById('board-state');
@@ -420,7 +462,27 @@
 
       meta.appendChild(pr);
       meta.appendChild(assignee);
+
+      if (task.due_date) {
+        const due = document.createElement('span');
+        due.className = 'due-date';
+        due.textContent = `Due: ${task.due_date}`;
+        meta.appendChild(due);
+      }
+
       card.appendChild(meta);
+
+      if (task.tags && task.tags.length) {
+        const tagContainer = document.createElement('div');
+        tagContainer.className = 'card-tags';
+        task.tags.forEach(tag => {
+          const badge = document.createElement('span');
+          badge.className = 'tag-badge';
+          badge.textContent = tag;
+          tagContainer.appendChild(badge);
+        });
+        card.appendChild(tagContainer);
+      }
 
       const actions = document.createElement('div');
       actions.className = 'card-actions';
@@ -439,10 +501,23 @@
         errEl.textContent = taskErrors.get(taskId);
         card.appendChild(errEl);
       }
+
+      if (isOverdue(task)) {
+        card.classList.add('card-overdue');
+        const badge = document.createElement('span');
+        badge.className = 'overdue-badge';
+        badge.textContent = 'Overdue';
+        const dueSpan = card.querySelector('.due-date');
+        if (dueSpan) {
+          dueSpan.appendChild(badge);
+        }
+      }
+
       return card;
     }
 
     function renderBoard(list){
+      const displayList = filterOverdue ? list.filter(isOverdue) : list;
       STATUSES.forEach(status => {
         const column = document.querySelector(`.column[data-status="${status}"]`);
         if (!column) return;
@@ -450,7 +525,7 @@
         const countEl = column.querySelector('.column-header .count');
         body.innerHTML = '';
 
-        const group = list.filter(t => t.status === status);
+        const group = displayList.filter(t => t.status === status);
         group.sort((a,b) => {
           const pa = priorityOrder[a.priority] ?? 3;
           const pb = priorityOrder[b.priority] ?? 3;
