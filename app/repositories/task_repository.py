@@ -21,6 +21,12 @@ class JsonTaskRepository:
     """
 
     def __init__(self, file_path: str = "app/data/tasks.json") -> None:
+        """Initialize the repository with a path to the JSON data file.
+
+        Args:
+            file_path: Path to the JSON file used for persistence.
+                Defaults to ``"app/data/tasks.json"``.
+        """
         self._file_path = Path(file_path)
         self._lock = Lock()
 
@@ -80,6 +86,15 @@ class JsonTaskRepository:
     # ------------------------------------------------------------------
 
     def add(self, payload: TaskCreate) -> TaskResponse:
+        """Persist a new task and return it with server-assigned fields.
+
+        Args:
+            payload: Validated ``TaskCreate`` body.
+
+        Returns:
+            TaskResponse: The created task with an ``id``, ``created_at``,
+            and ``updated_at`` assigned.
+        """
         task_id = uuid4().hex
         now = datetime.now(timezone.utc)
         task = TaskResponse(
@@ -104,6 +119,17 @@ class JsonTaskRepository:
         status: Optional[TaskStatus] = None,
         priority: Optional[TaskPriority] = None,
     ) -> List[TaskResponse]:
+        """Return all tasks, optionally filtered.
+
+        Args:
+            status: Filter by workflow status. ``None`` disables the
+                filter.
+            priority: Filter by priority. ``None`` disables the filter.
+
+        Returns:
+            List[TaskResponse]: Matching tasks (empty list when none
+            match).
+        """
         tasks = self._read_all()
         results = [self._dict_to_response(d) for d in tasks.values()]
         if status is not None:
@@ -113,6 +139,14 @@ class JsonTaskRepository:
         return results
 
     def get_by_id(self, task_id: str) -> Optional[TaskResponse]:
+        """Look up a single task by ID.
+
+        Args:
+            task_id: The hex task ID.
+
+        Returns:
+            TaskResponse if found, ``None`` otherwise.
+        """
         tasks = self._read_all()
         d = tasks.get(task_id)
         if d is None:
@@ -120,6 +154,17 @@ class JsonTaskRepository:
         return self._dict_to_response(d)
 
     def update(self, task_id: str, payload: TaskUpdate) -> Optional[TaskResponse]:
+        """Update an existing task with partial data.
+
+        Args:
+            task_id: The hex task ID.
+            payload: ``TaskUpdate`` body; only explicitly-set fields are
+                applied.
+
+        Returns:
+            TaskResponse if the task was found and updated, ``None`` if
+            the task does not exist.
+        """
         tasks = self._read_all()
         d = tasks.get(task_id)
         if d is None:
@@ -135,6 +180,15 @@ class JsonTaskRepository:
         return updated
 
     def delete(self, task_id: str) -> bool:
+        """Delete a task by ID.
+
+        Args:
+            task_id: The hex task ID.
+
+        Returns:
+            bool: ``True`` if the task was deleted, ``False`` if it did
+            not exist.
+        """
         tasks = self._read_all()
         if task_id not in tasks:
             return False
