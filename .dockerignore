@@ -1,53 +1,11 @@
-# Secrets & environment
-.env
-.env.*
+*
 
-# Git
-.git
-.gitignore
-.gitattributes
+!requirements.txt
+!app/
+!app/**
+!frontend/
+!frontend/**
 
-# Virtual environments
-venv/
-.venv/
-env/
-
-# Python bytecode & caches
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Tests — not needed at runtime
-tests/
-
-# Frontend tooling (if ever added)
-node_modules/
-
-# Documentation & config (not needed at runtime)
-README.md
-CLAUDE.md
-.github/
-
-# IDE / editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Build artifacts
-dist/
-build/
-*.egg
-
-# Docker
-Dockerfile
-.dockerignore
-docker-compose*.yml
+app/**/__pycache__/
+app/**/*.py[cod]
+frontend/**/.cache/

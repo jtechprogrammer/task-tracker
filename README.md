@@ -195,3 +195,51 @@ After installing the dependencies, you can record the exact installed versions w
 ```bash
 python -m pip freeze > requirements.lock.txt
 ```
+
+## Final Project
+
+Branch reviewed: `final-project`
+
+### What This Submission Demonstrates
+
+- The existing Task Tracker still runs inside the intended course scope.
+- CI runs the pytest suite on push and pull request.
+- The Docker image builds and runs with `/health` returning HTTP 200.
+- AI review, security, and ownership evidence are documented in `docs/`.
+
+### How to Run Locally
+
+```bash
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Then open `http://127.0.0.1:8000/` for the Kanban board or `http://127.0.0.1:8000/health` for the health check.
+
+### How to Run Tests
+
+```bash
+python -m pytest tests -v
+```
+
+### How to Run with Docker
+
+```bash
+docker build -t task-tracker-final .
+docker run --rm -p 8000:8000 task-tracker-final
+curl http://127.0.0.1:8000/health
+```
+
+### Evidence Files
+
+- [docs/release-evidence.md](docs/release-evidence.md) — baseline, CI, Docker, and documentation-vs-reality checks.
+- [docs/final-ai-review.md](docs/final-ai-review.md) — AGENTS.md guardrail check, AI code review and security mini-logs, manual security check, rejected AI output, ownership statement.
+- [docs/ai-playbook.md](docs/ai-playbook.md) — personal rules for working with AI.
+
+### AI Assistance Summary
+
+AI helped draft or review: CI/Docker cleanup, README wording, and a read-only code and security review of `app/repositories/task_repository.py`, `app/business_rules.py`, and `app/main.py`.
+
+I verified the work by: running the full pytest suite (`34 passed`), building and running the Docker image and checking `/health` and non-root/no-secrets behavior directly, and reading every flagged file and line myself before accepting or rejecting a finding.
+
+One AI suggestion I rejected: collapsing the multi-stage `Dockerfile` into a single stage "to simplify it" — this would have shipped build tooling in the runtime image and undone the non-root user setup, so the two-stage build was kept as-is (see `docs/final-ai-review.md`).
